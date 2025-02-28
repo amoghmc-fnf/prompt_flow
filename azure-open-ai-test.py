@@ -64,12 +64,15 @@ def get_extracted_content():
             model="gpt-4o-mini-std",  # model = "deployment_name".
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": "TEMPLATE:\n" + ai_response},
-                {"role": "user", "content": "CONTENT:\n" + chunk}
+                {"role": "user", "content": "TITLE DOCUMENT:\n" + ai_response},
+                {"role": "user", "content": "TEXT DOCUMENT:\n" + chunk}
             ]
         )
         ai_response = response.choices[0].message.content
     
     return ai_response
 
-get_extracted_content()
+output = get_extracted_content()
+# Open a file in write mode
+with open('output.txt', 'w') as file:
+    file.write(output)
