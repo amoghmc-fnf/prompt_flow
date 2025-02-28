@@ -1,37 +1,42 @@
 import os
-import time
 from openai import AzureOpenAI
-
+import tiktoken
 
 
 def get_text_from_file(txt_file: str) -> str:
     content = ""
+
     with open(txt_file, 'r') as file:
         # Read all the text from the file
         content = file.read()
+
     return content
 
 
 def chunk_text(text, max_tokens):
-    tokens = text.split()  # Simple tokenization by splitting on spaces
+    # Initialize the tokenizer
+    tokenizer = tiktoken.get_encoding("gpt-4o-mini")
+    
+    tokens = tokenizer.encode(text)
     chunks = []
-    chunk = []
+    encoded_chunk = []
     token_count = 0
 
     for token in tokens:
-        token_length = len(token)
-        if token_count + token_length + 1 > max_tokens:
-            chunks.append(' '.join(chunk))
-            chunk = []
+        token_length = len(tokenizer.decode([token]))
+        if token_count + token_length > max_tokens:
+            # convert a list of tokens back into a human-readable string
+            chunks.append(tokenizer.decode(encoded_chunk))
+            encoded_chunk = []
             token_count = 0
-        chunk.append(token)
-        token_count += token_length + 1
+        encoded_chunk.append(token)
+        token_count += token_length
 
-    if chunk:
-        chunks.append(' '.join(chunk))
+    # to account for off-by-one 
+    if encoded_chunk:
+        chunks.append(tokenizer.decode(encoded_chunk))
 
     return chunks
-
 
 
 def get_extracted_content():
@@ -53,6 +58,7 @@ def get_extracted_content():
 
     # Process each chunk
     ai_response = ""
+
     for chunk in chunks:
         response = client.chat.completions.create(
             model="gpt-4o-mini-std",  # model = "deployment_name".
@@ -65,3 +71,5 @@ def get_extracted_content():
         ai_response = response.choices[0].message.content
     
     return ai_response
+
+get_extracted_content()
