@@ -2,6 +2,7 @@ import os
 import time
 from openai import AzureOpenAI
 import tiktoken
+import fitz
 
 
 def main():
@@ -22,6 +23,28 @@ def main():
         file.write(output)
     return
 
+def convert_pdf_to_image(pdf_path, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Open the PDF file
+    pdf_document = fitz.open(pdf_path)
+
+    # Iterate through each page in the PDF
+    for page_num in range(len(pdf_document)):
+        # Get the page
+        page = pdf_document.load_page(page_num)
+        
+        # Render the page to an image
+        pix = page.get_pixmap()
+        
+        # Define the output image path
+        output_image_path = os.path.join(output_dir, f"{page_num:03}.png")
+        
+        # Save the image
+        pix.save(output_image_path)
+
+    print(f"PDF has been converted to images and stored in the '{output_dir}' folder.")
+    return
 
 def get_text_from_file(txt_file: str) -> str:
     content = ""
@@ -94,4 +117,5 @@ def get_extracted_content():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    convert_pdf_to_image("HS0825664.pdf", "outputFolder")
