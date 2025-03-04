@@ -11,6 +11,7 @@ def main():
     # Start measuring time
     start_time = time.time()
 
+    convert_pdf_to_image("HS0825664.pdf")
     output = get_extracted_content()
 
     # Stop measuring time
@@ -57,31 +58,13 @@ def get_text_from_file(txt_file: str) -> str:
 
     return content
 
+def get_image_paths_from_dir(image_dir):
+    image_paths = []
+    for image in os.listdir(image_dir):
+        image_path = os.path.join(image_dir, image)
+        image_paths.append(image_path)
 
-def chunk_text(text, max_tokens):
-    # Initialize the tokenizer
-    tokenizer = tiktoken.encoding_for_model("gpt-4o-mini")
-    
-    tokens = tokenizer.encode(text)
-    chunks = []
-    encoded_chunk = []
-    token_count = 0
-
-    for token in tokens:
-        token_length = len(tokenizer.decode([token]))
-        if token_count + token_length > max_tokens:
-            # convert a list of tokens back into a human-readable string
-            chunks.append(tokenizer.decode(encoded_chunk))
-            encoded_chunk = []
-            token_count = 0
-        encoded_chunk.append(token)
-        token_count += token_length
-
-    # to account for off-by-one 
-    if encoded_chunk:
-        chunks.append(tokenizer.decode(encoded_chunk))
-
-    return chunks
+    return image_paths
 
 # Function to encode a local image into data URL 
 def local_image_to_data_url(image_path):
@@ -98,30 +81,6 @@ def local_image_to_data_url(image_path):
     return f"data:{mime_type};base64,{base64_encoded_data}"
 
 
-def get_response_of_image(image_url):
-    client = AzureOpenAI(
-        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT"), 
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version="2024-02-01"
-    )
-
-    response = client.chat.completions.create(
-        model = "gpt-4o-mini-std",
-        messages=[
-            { "role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only" },
-            { "role": "user", "content": [  
-                { 
-                    "type": "image_url",
-                    "image_url": {
-                        "url": image_url
-                    }
-                }
-            ] } 
-        ],
-        max_tokens=2000 
-    )
-    print(response.choices[0].message.content)
-
 def get_extracted_content():
     # Initialize the Azure OpenAI client
     client = AzureOpenAI(
@@ -130,25 +89,24 @@ def get_extracted_content():
         api_version="2024-02-01"
     )
 
-    input_text = get_text_from_file("extracted_content.txt")
-    system_prompt = get_text_from_file("system_prompt.txt")
+    image_paths = get_image_paths_from_dir("outputFolder")
 
-    # Define the maximum number of tokens per chunk
-    max_tokens = 100000  # Adjust based on your model's token limit
-
-    # Chunk the input text
-    chunks = chunk_text(input_text, max_tokens)
-
-    # Process each chunk
+    # Process each image 
     ai_response = ""
 
-    for chunk in chunks:
+    for image_path in image_paths:
         response = client.chat.completions.create(
             model="gpt-4o-mini-std",  # model = "deployment_name".
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only. You will be given a 'TITLE DOCUMENT' that is prefilled with titles or empty and u need to use it to fill any missing titles/headings/sub-headings"},
                 {"role": "user", "content": "TITLE DOCUMENT:\n" + ai_response},
-                {"role": "user", "content": "TEXT DOCUMENT:\n" + chunk}
+                { "role": "user", "content": [{ 
+                        "type": "image_url",
+                        "image_url": {
+                            "url": local_image_to_data_url(image_path)
+                        }
+                    }]
+                }
             ]
         )
         ai_response = response.choices[0].message.content
@@ -157,8 +115,4 @@ def get_extracted_content():
 
 
 if __name__ == "__main__":
-    # main()
-    # convert_pdf_to_image("HS0825664.pdf", "outputFolder")
-    image_path = os.path.join("outputFolder", "000.png")
-    image_url = local_image_to_data_url(image_path)
-    get_response_of_image(image_url)
+    main()
