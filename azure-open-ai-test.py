@@ -2,6 +2,8 @@ import os
 import time
 from openai import AzureOpenAI
 import tiktoken
+import base64
+from mimetypes import guess_type
 import fitz
 
 
@@ -81,6 +83,44 @@ def chunk_text(text, max_tokens):
 
     return chunks
 
+# Function to encode a local image into data URL 
+def local_image_to_data_url(image_path):
+    # Guess the MIME type of the image based on the file extension
+    mime_type, _ = guess_type(image_path)
+    if mime_type is None:
+        mime_type = 'application/octet-stream'  # Default MIME type if none is found
+
+    # Read and encode the image file
+    with open(image_path, "rb") as image_file:
+        base64_encoded_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+    # Construct the data URL
+    return f"data:{mime_type};base64,{base64_encoded_data}"
+
+
+def get_response_of_image(image_url):
+    client = AzureOpenAI(
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT"), 
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        api_version="2024-02-01"
+    )
+
+    response = client.chat.completions.create(
+        model = "gpt-4o-mini-std",
+        messages=[
+            { "role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only" },
+            { "role": "user", "content": [  
+                { 
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_url
+                    }
+                }
+            ] } 
+        ],
+        max_tokens=2000 
+    )
+    print(response.choices[0].message.content)
 
 def get_extracted_content():
     # Initialize the Azure OpenAI client
@@ -118,4 +158,7 @@ def get_extracted_content():
 
 if __name__ == "__main__":
     # main()
-    convert_pdf_to_image("HS0825664.pdf", "outputFolder")
+    # convert_pdf_to_image("HS0825664.pdf", "outputFolder")
+    image_path = os.path.join("outputFolder", "000.png")
+    image_url = local_image_to_data_url(image_path)
+    get_response_of_image(image_url)
