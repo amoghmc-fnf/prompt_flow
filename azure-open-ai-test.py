@@ -1,7 +1,6 @@
 import os
 import time
 from openai import AzureOpenAI
-import tiktoken
 import base64
 from mimetypes import guess_type
 import fitz
@@ -11,7 +10,7 @@ def main():
     # Start measuring time
     start_time = time.time()
 
-    convert_pdf_to_image("HS0825664.pdf")
+    convert_pdf_to_images("HS0825664.pdf", "outputFolder")
     output = get_extracted_content()
 
     # Stop measuring time
@@ -23,10 +22,10 @@ def main():
 
     # Open a file in write mode
     with open('output.txt', 'w') as file:
-        file.write(output)
+        file.write("".join(output))
     return
 
-def convert_pdf_to_image(pdf_path, output_dir):
+def convert_pdf_to_images(pdf_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     # Open the PDF file
@@ -92,14 +91,13 @@ def get_extracted_content():
     image_paths = get_image_paths_from_dir("outputFolder")
 
     # Process each image 
-    ai_response = ""
-
+    ai_responses = []
     for image_path in image_paths:
+        print(image_path)
         response = client.chat.completions.create(
             model="gpt-4o-mini-std",  # model = "deployment_name".
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only. You will be given a 'TITLE DOCUMENT' that is prefilled with titles or empty and u need to use it to fill any missing titles/headings/sub-headings"},
-                {"role": "user", "content": "TITLE DOCUMENT:\n" + ai_response},
+                {"role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only."},
                 { "role": "user", "content": [{ 
                         "type": "image_url",
                         "image_url": {
@@ -109,9 +107,10 @@ def get_extracted_content():
                 }
             ]
         )
-        ai_response = response.choices[0].message.content
+        ai_responses.append(image_path + "\n")
+        ai_responses.append(response.choices[0].message.content + "\n")
     
-    return ai_response
+    return ai_responses
 
 
 if __name__ == "__main__":
