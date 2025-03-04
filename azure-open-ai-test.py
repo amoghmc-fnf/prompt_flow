@@ -4,6 +4,25 @@ from openai import AzureOpenAI
 import tiktoken
 
 
+def main():
+    # Start measuring time
+    start_time = time.time()
+
+    output = get_extracted_content()
+
+    # Stop measuring time
+    end_time = time.time()
+
+    # Calculate the difference
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time} seconds")
+
+    # Open a file in write mode
+    with open('output.txt', 'w') as file:
+        file.write(output)
+    return
+
+
 def get_text_from_file(txt_file: str) -> str:
     content = ""
 
@@ -73,18 +92,6 @@ def get_extracted_content():
     
     return ai_response
 
-# Start measuring time
-start_time = time.time()
 
-output = get_extracted_content()
-
-# Stop measuring time
-end_time = time.time()
-
-# Calculate the difference
-elapsed_time = end_time - start_time
-print(f"Elapsed time: {elapsed_time} seconds")
-
-# Open a file in write mode
-with open('output.txt', 'w') as file:
-    file.write(output)
+if __name__ == "__main__":
+    main()
