@@ -21,7 +21,7 @@ def main():
     print(f"Elapsed time: {elapsed_time} seconds")
 
     # Open a file in write mode
-    with open('output.txt', 'w') as file:
+    with open('output.txt', 'w', encoding="utf-8") as file:
         file.write("".join(output))
     return
 
@@ -89,6 +89,7 @@ def get_extracted_content():
     )
 
     image_paths = get_image_paths_from_dir("outputFolder")
+    system_prompt = get_text_from_file("system_prompt.txt")
 
     # Process each image 
     ai_responses = []
@@ -97,7 +98,7 @@ def get_extracted_content():
         response = client.chat.completions.create(
             model="gpt-4o-mini-std",  # model = "deployment_name".
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that extracts only titles/headings/sub-headings from the given picture and ignore everything else. Do it quickly as possible as you are looking for titles/headings/sub-headings only."},
+                {"role": "system", "content": system_prompt},
                 { "role": "user", "content": [{ 
                         "type": "image_url",
                         "image_url": {
